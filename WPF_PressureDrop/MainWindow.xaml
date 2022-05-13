@@ -1,0 +1,1085 @@
+﻿<Window
+    x:Class="WPF_PressureDrop.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:ht="clr-namespace:HelixToolkit.Wpf;assembly=HelixToolkit.Wpf"
+    xmlns:local="clr-namespace:WPF_PressureDrop" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:sys="clr-namespace:System;assembly=mscorlib" xmlns:xcdg="http://schemas.xceed.com/wpf/xaml/datagrid" Title="Piping System Friction Head Loss Calculator v1.08"
+    Width="1024" Height="800"
+    Icon="{StaticResource Icon}"
+    mc:Ignorable="d">
+
+    <Window.Resources>
+        <!--  TAB CONTROL STYLE  -->
+        <Style TargetType="TabItem">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border
+                            Name="Panel" Height="30" CornerRadius="5">
+                            <ContentPresenter>
+                                <ContentPresenter.Content>
+                                    <TextBlock
+                                        Name="Font" Margin="10,2" VerticalAlignment="Center" FontSize="14" FontWeight="Bold"
+                                        Foreground="#FFEEEEEE"
+                                        Text="{TemplateBinding Header}" />
+                                </ContentPresenter.Content>
+                            </ContentPresenter>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Panel" Property="Background" Value="#FF565656" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="False">
+                                <Setter TargetName="Panel" Property="Background" Value="White" />
+                                <Setter TargetName="Font" Property="Foreground" Value="DarkGray" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <BitmapImage x:Key="ImageSource" UriSource="/Resources/MainIcon.png" />
+
+    </Window.Resources>
+
+    <DockPanel>
+
+        <Menu
+            Height="25" Background="#FF565656" DockPanel.Dock="Top" FontSize="14" FontWeight="Bold"
+            Foreground="White" IsMainMenu="True">
+            <MenuItem Header="_File">
+                <MenuItem
+                    Click="menuNew_Click" Foreground="#FF565656" Header="_New" />
+                <MenuItem
+                    Click="menuOpen_Click" Foreground="#FF565656" Header="_Open" />
+                <MenuItem
+                    Click="menuAppend_Click" Foreground="#FF565656" Header="_Append" />
+                <MenuItem
+                    Click="menuSave_Click" Foreground="#FF565656" Header="_Save" />
+                <MenuItem
+                    Click="menuImport_Click" Foreground="#FF565656" Header="Import PCF" />
+                <MenuItem
+                    Click="menuExportExcel_Click" Foreground="#FF565656" Header="Export Excel" IsEnabled="False" />
+                <MenuItem
+                    Click="menuExportImage_Click" Foreground="#FF565656" Header="Export PNG" />
+                <Separator />
+                <MenuItem
+                    Click="menuExit_Click" Foreground="#FF565656" Header="_Exit" />
+            </MenuItem>
+            <MenuItem Header="_Help" />
+        </Menu>
+
+        <Grid DockPanel.Dock="Bottom">
+            <TabControl
+                Name="tabControl1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
+                SelectionChanged="tabControl1_SelectionChanged">
+
+                <TabItem Header="Head Loss">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="40" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="1*" />
+                        </Grid.ColumnDefinitions>
+
+                        <DockPanel Grid.Row="0" Grid.Column="0">
+                            <Label
+                                DockPanel.Dock="Top" FontSize="14" FontWeight="Bold" Foreground="DarkGray">
+                                Head Loss due to friction:
+                            </Label>
+                            <Border Margin="10,0,10,10" CornerRadius="0">
+                                <Border.Effect>
+                                    <DropShadowEffect
+                                        BlurRadius="10" ShadowDepth="8" Color="Gray" />
+                                </Border.Effect>
+                                <xcdg:DataGridControl
+                                    x:Name="dgvCalc" AutoCreateColumns="False"
+                                    ItemsSource="{Binding}"
+                                    SelectionChanged="dgvCalc_SelectionChanged">
+                                    <!--  Resources  -->
+                                    <xcdg:DataGridControl.Resources>
+
+                                        <!--  DataGrid Header Style  -->
+                                        <Style TargetType="{x:Type xcdg:ColumnManagerRow}">
+                                            <Setter Property="Background" Value="#FFC4ECFF" />
+                                            <Setter Property="BorderBrush" Value="Black" />
+                                            <Setter Property="Foreground" Value="DarkBlue" />
+                                            <Setter Property="FontWeight" Value="Bold" />
+                                            <Setter Property="FontSize" Value="12" />
+                                        </Style>
+
+                                        <!--  DataGrid Header ToolTips  -->
+                                        <Style TargetType="{x:Type xcdg:ColumnManagerCell}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=FieldName}" Value="t">
+                                                    <Setter Property="ToolTip" Value="Temperature [degC]." />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=FieldName}" Value="epsilon">
+                                                    <Setter Property="ToolTip" Value="ε, absolute roughness or effective height of pipe wall irregularities [mm]." />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=FieldName}" Value="qh">
+                                                    <Setter Property="ToolTip" Value="Qh, rate of flow at flowing conditions  or Qstraight for Tee calculation [m3/h]." />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=FieldName}" Value="Qcomb">
+                                                    <Setter Property="ToolTip" Value="Combained Qcomb, rate of flow, for Tee calculation [m3/h]." />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=FieldName}" Value="Qbranch">
+                                                    <Setter Property="ToolTip" Value="Branch Qbranch, rate of flow, for Tee calculation [m3/h]." />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=FieldName}" Value="ElementType">
+                                                    <Setter Property="ToolTip" Value="Piping item type." />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=FieldName}" Value="L">
+                                                    <Setter Property="ToolTip" Value="Length of Pipe [m]." />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=FieldName}" Value="d">
+                                                    <Setter Property="ToolTip" Value="Diameter of stream or straight [mm]." />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=FieldName}" Value="d1">
+                                                    <Setter Property="ToolTip" Value="Small or branch diameter [mm]." />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=FieldName}" Value="d2">
+                                                    <Setter Property="ToolTip" Value="Large or comb diameter [mm]." />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=FieldName}" Value="r">
+                                                    <Setter Property="ToolTip" Value="Bend radious [mm]." />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=FieldName}" Value="n">
+                                                    <Setter Property="ToolTip" Value="Number of bends n." />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=FieldName}" Value="a">
+                                                    <Setter Property="ToolTip" Value="Angle [deg]." />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=FieldName}" Value="rho">
+                                                    <Setter Property="ToolTip" Value="ρ, water density [kg/m3]." />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=FieldName}" Value="me">
+                                                    <Setter Property="ToolTip" Value="μ, Dynamic viscocity [cP]." />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=FieldName}" Value="ne">
+                                                    <Setter Property="ToolTip" Value="ν, Kinematic viscocity [cSt]." />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=FieldName}" Value="Re">
+                                                    <Setter Property="ToolTip" Value="Reynolds number [unitless]." />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=FieldName}" Value="v">
+                                                    <Setter Property="ToolTip" Value="v, mean flow velocity [m/sec]." />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=FieldName}" Value="f">
+                                                    <Setter Property="ToolTip" Value="Colebrook equation friction factor [unitless]." />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=FieldName}" Value="K">
+                                                    <Setter Property="ToolTip" Value="Resistance coefficient  [unitless]." />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=FieldName}" Value="hLm">
+                                                    <Setter Property="ToolTip" Value="Loss of static pressure head due to fluid flow(friction) [mm]." />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=FieldName}" Value="W">
+                                                    <Setter Property="ToolTip" Value="Weight of item [kgr], calculated from PCF file." />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=FieldName}" Value="Vm">
+                                                    <Setter Property="ToolTip" Value="Volume of item [liters]." />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+
+                                    </xcdg:DataGridControl.Resources>
+
+                                    <!--  Context Menu  -->
+                                    <xcdg:DataGridControl.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Click="menuAddItem_Click" Header="Add" />
+                                            <MenuItem Click="menuRemoveItem_Click" Header="Remove" />
+                                            <MenuItem Click="menuRemoveDuplicates_Click" Header="Remove Duplicates" />
+                                            <MenuItem Click="menuSortItem_Click" Header="Sort" />
+                                            <MenuItem Click="menuRenumberItem_Click">
+                                                <MenuItem.Header>
+                                                    <ContentControl>
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock>Renumber:</TextBlock>
+                                                            <TextBox
+                                                                x:Name="tbNumber" Width="40" Margin="10,0,0,0" PreviewTextInput="NumberValidationTextBox" Text="1"
+                                                                TextAlignment="Center" />
+                                                        </StackPanel>
+                                                    </ContentControl>
+                                                </MenuItem.Header>
+                                            </MenuItem>
+                                            <MenuItem Click="menuCopyItem_Click" Header="Copy" />
+                                            <MenuItem Click="menuPasteItem_Click" Header="Paste" />
+                                        </ContextMenu>
+                                    </xcdg:DataGridControl.ContextMenu>
+
+                                    <!--  Grid Columns  -->
+                                    <xcdg:DataGridControl.Columns>
+
+                                        <xcdg:Column
+                                            Title="Id" Width="50" CellVerticalContentAlignment="Center" FieldName="ElementId" Visible="True">
+                                            <xcdg:Column.CellContentTemplate>
+                                                <DataTemplate>
+                                                    <Grid>
+                                                        <Border Background="CadetBlue" CornerRadius="10" />
+                                                        <TextBlock HorizontalAlignment="Center" FontWeight="Bold">
+                                                            <ContentPresenter Content="{Binding}" />
+                                                        </TextBlock>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </xcdg:Column.CellContentTemplate>
+                                        </xcdg:Column>
+
+                                        <xcdg:Column
+                                            Title="Path" Width="40" CellContentStringFormat="{}{0:N1}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            FieldName="Notes" Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="t" Width="40" CellContentStringFormat="{}{0:N1}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            FieldName="t" Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="ε" Width="40" CellContentStringFormat="{}{0:N3}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            FieldName="epsilon" Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="Qh" Width="50" CellContentStringFormat="{}{0:N1}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            FieldName="qh" Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="Qbranch" Width="50" CellContentStringFormat="{}{0:N1}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            FieldName="Qbranch" Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="Qcomb" Width="50" CellContentStringFormat="{}{0:N1}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            FieldName="Qcomb" Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="Icon" Width="50" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center" FieldName="Icon"
+                                            Visible="True">
+                                            <xcdg:Column.CellContentTemplate>
+                                                <DataTemplate>
+                                                    <Image Source="{Binding FallbackValue={StaticResource ImageSource}, TargetNullValue={StaticResource ImageSource}}" />
+
+                                                </DataTemplate>
+                                            </xcdg:Column.CellContentTemplate>
+                                        </xcdg:Column>
+
+                                        <xcdg:Column
+                                            Title="Type" Width="80" CellVerticalContentAlignment="Center" FieldName="ElementType">
+                                            <xcdg:Column.CellEditor>
+                                                <xcdg:CellEditor>
+                                                    <xcdg:CellEditor.EditTemplate>
+                                                        <DataTemplate>
+                                                            <Grid>
+                                                                <ComboBox
+                                                                    Foreground="Black"
+                                                                    ItemsSource="{Binding Source={local:EnumBindingSource {x:Type local:ItemType}}}"
+                                                                    SelectedValue="{xcdg:CellEditorBinding}" />
+                                                            </Grid>
+                                                        </DataTemplate>
+                                                    </xcdg:CellEditor.EditTemplate>
+                                                </xcdg:CellEditor>
+                                            </xcdg:Column.CellEditor>
+                                        </xcdg:Column>
+
+                                        <xcdg:Column
+                                            Title="L" Width="40" CellContentStringFormat="{}{0:N3}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            FieldName="L" Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="d" Width="40" CellContentStringFormat="{}{0:N2}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            FieldName="d" Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="d1" Width="40" CellContentStringFormat="{}{0:N2}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            FieldName="d1" Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="d2" Width="40" CellContentStringFormat="{}{0:N2}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            FieldName="d2" Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="r" Width="40" CellContentStringFormat="{}{0:N2}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            FieldName="r" Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="n" Width="40" CellContentStringFormat="{}{0:N3}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            FieldName="n" Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="a" Width="40" CellContentStringFormat="{}{0:N3}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            FieldName="a" Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="ρ" Width="50" CellContentStringFormat="{}{0:N2}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            FieldName="rho" Visible="True">
+                                            <xcdg:Column.CellContentTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock FontStyle="Italic" Foreground="DarkGray">
+                                                        <ContentPresenter Content="{Binding}" />
+                                                    </TextBlock>
+                                                </DataTemplate>
+                                            </xcdg:Column.CellContentTemplate>
+                                        </xcdg:Column>
+
+                                        <xcdg:Column
+                                            Title="μ" Width="40" CellContentStringFormat="{}{0:N3}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            FieldName="me" Visible="True">
+                                            <xcdg:Column.CellContentTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock FontStyle="Italic" Foreground="DarkGray">
+                                                        <ContentPresenter Content="{Binding}" />
+                                                    </TextBlock>
+                                                </DataTemplate>
+                                            </xcdg:Column.CellContentTemplate>
+                                        </xcdg:Column>
+
+                                        <xcdg:Column
+                                            Title="ν" Width="40" CellContentStringFormat="{}{0:N3}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            FieldName="ne" Visible="True">
+                                            <xcdg:Column.CellContentTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock FontStyle="Italic" Foreground="DarkGray">
+                                                        <ContentPresenter Content="{Binding}" />
+                                                    </TextBlock>
+                                                </DataTemplate>
+                                            </xcdg:Column.CellContentTemplate>
+                                        </xcdg:Column>
+
+                                        <xcdg:Column
+                                            Title="Re" Width="50" CellContentStringFormat="{}{0:N0}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            FieldName="Re" Visible="True">
+                                            <xcdg:Column.CellContentTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock FontStyle="Italic" Foreground="DarkGray">
+                                                        <ContentPresenter Content="{Binding}" />
+                                                    </TextBlock>
+                                                </DataTemplate>
+                                            </xcdg:Column.CellContentTemplate>
+                                        </xcdg:Column>
+
+                                        <xcdg:Column
+                                            Title="v" Width="40" CellContentStringFormat="{}{0:N3}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            FieldName="v" Visible="True">
+                                            <xcdg:Column.CellContentTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock FontStyle="Italic" Foreground="DarkGray">
+                                                        <ContentPresenter Content="{Binding}" />
+                                                    </TextBlock>
+                                                </DataTemplate>
+                                            </xcdg:Column.CellContentTemplate>
+                                        </xcdg:Column>
+
+                                        <xcdg:Column
+                                            Title="f" Width="50" CellContentStringFormat="{}{0:N5}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            FieldName="f" Visible="True">
+                                            <xcdg:Column.CellContentTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock FontStyle="Italic" Foreground="DarkGray">
+                                                        <ContentPresenter Content="{Binding}" />
+                                                    </TextBlock>
+                                                </DataTemplate>
+                                            </xcdg:Column.CellContentTemplate>
+                                        </xcdg:Column>
+
+                                        <xcdg:Column
+                                            Title="fT" Width="50" CellContentStringFormat="{}{0:N5}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            FieldName="fT" Visible="True">
+                                            <xcdg:Column.CellContentTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock FontStyle="Italic" Foreground="DarkGray">
+                                                        <ContentPresenter Content="{Binding}" />
+                                                    </TextBlock>
+                                                </DataTemplate>
+                                            </xcdg:Column.CellContentTemplate>
+                                        </xcdg:Column>
+
+
+                                        <xcdg:Column
+                                            Title="K" Width="40" CellContentStringFormat="{}{0:N3}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            FieldName="K" Visible="True">
+                                            <xcdg:Column.CellContentTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock FontStyle="Italic" Foreground="DarkGray">
+                                                        <ContentPresenter Content="{Binding}" />
+                                                    </TextBlock>
+                                                </DataTemplate>
+                                            </xcdg:Column.CellContentTemplate>
+                                        </xcdg:Column>
+
+                                        <xcdg:Column
+                                            Title="hLoss" Width="70" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center" FieldName="hLm"
+                                            Visible="True">
+                                            <xcdg:Column.CellContentTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock
+                                                        HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="14" FontWeight="Bold">
+                                                        <ContentPresenter Content="{Binding}" ContentStringFormat="{}{0:N2}" />
+                                                    </TextBlock>
+                                                </DataTemplate>
+                                            </xcdg:Column.CellContentTemplate>
+                                        </xcdg:Column>
+
+
+                                        <xcdg:Column
+                                            Title="Weight" Width="70" CellContentStringFormat="{}{0:N2}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            FieldName="W" Visible="True">
+                                            <xcdg:Column.CellContentTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock
+                                                        HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="14" FontWeight="Bold">
+                                                        <ContentPresenter Content="{Binding}" />
+                                                    </TextBlock>
+                                                </DataTemplate>
+                                            </xcdg:Column.CellContentTemplate>
+                                        </xcdg:Column>
+
+                                        <xcdg:Column
+                                            Title="Volume" Width="70" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center" FieldName="Vm"
+                                            Visible="True">
+                                            <xcdg:Column.CellContentTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock
+                                                        HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="14" FontWeight="Bold">
+                                                        <ContentPresenter Content="{Binding}" ContentStringFormat="{}{0:N2}" />
+                                                    </TextBlock>
+                                                </DataTemplate>
+                                            </xcdg:Column.CellContentTemplate>
+                                        </xcdg:Column>
+
+                                        <xcdg:Column
+                                            Title="N1.id" Width="30" CellContentStringFormat="{}{0:N2}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            DisplayMemberBinding="{Binding Path=Node1.NodeId}"
+                                            FieldName="Node1.NodeId" Visible="False" />
+
+                                        <xcdg:Column
+                                            Title="N1.X" Width="60" CellContentStringFormat="{}{0:N2}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            DisplayMemberBinding="{Binding Path=Node1.X, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            FieldName="Node1.X" Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="N1.Y" Width="60" CellContentStringFormat="{}{0:N2}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            DisplayMemberBinding="{Binding Path=Node1.Y, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            FieldName="Node1.Y" Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="N1.Z" Width="60" CellContentStringFormat="{}{0:N2}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            DisplayMemberBinding="{Binding Path=Node1.Z, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            FieldName="Node1.Z" Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="N2.id" Width="30" CellContentStringFormat="{}{0:N2}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            DisplayMemberBinding="{Binding Path=Node2.NodeId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            FieldName="Node2.NodeId" Visible="False" />
+
+                                        <xcdg:Column
+                                            Title="N2.X" Width="60" CellContentStringFormat="{}{0:N2}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            DisplayMemberBinding="{Binding Path=Node2.X, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            FieldName="Node2.X" Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="N2.Y" Width="60" CellContentStringFormat="{}{0:N2}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            DisplayMemberBinding="{Binding Path=Node2.Y, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            FieldName="Node2.Y" Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="N2.Z" Width="60" CellContentStringFormat="{}{0:N2}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            DisplayMemberBinding="{Binding Path=Node2.Z, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            FieldName="Node2.Z" Visible="True" />
+
+
+
+
+
+
+
+
+
+                                    </xcdg:DataGridControl.Columns>
+                                </xcdg:DataGridControl>
+                            </Border>
+                        </DockPanel>
+
+                        <GridSplitter
+                            Grid.Row="0" Grid.RowSpan="1" Grid.Column="1" Width="5" HorizontalAlignment="Stretch" />
+
+                        <Grid Grid.Row="0" Grid.Column="2">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="3*" />
+                                <RowDefinition Height="5" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <DockPanel>
+                                <Label
+                                    DockPanel.Dock="Top" FontSize="14" FontWeight="Bold" Foreground="DarkGray">
+                                    Model:
+                                </Label>
+                                <Border
+                                    Margin="10,0,10,10" CornerRadius="0" DockPanel.Dock="Top">
+                                    <Border.Effect>
+                                        <DropShadowEffect
+                                            BlurRadius="10" ShadowDepth="8" Color="Gray" />
+                                    </Border.Effect>
+                                    <ht:HelixViewport3D
+                                        x:Name="View1"
+                                        Background="{ht:LinearGradientBrush Gray,
+                                                                            White}"
+                                        InfiniteSpin="True" IsHeadLightEnabled="True" MouseDown="View1_MouseDown" RotateAroundMouseDownPoint="True" ShowCameraInfo="false"
+                                        ShowFrameRate="false" ZoomAroundMouseDownPoint="True" ZoomExtentsWhenLoaded="True">
+                                        <ht:HelixViewport3D.DefaultCamera>
+                                            <PerspectiveCamera
+                                                LookDirection="17 34 -17" Position="-20 -40 20" UpDirection="0 0 1" />
+                                        </ht:HelixViewport3D.DefaultCamera>
+                                        <ht:SunLight />
+                                        <ht:GridLinesVisual3D />
+
+                                    </ht:HelixViewport3D>
+
+
+
+                                </Border>
+                            </DockPanel>
+
+                            <GridSplitter
+                                Grid.Row="1" Grid.Column="0" Height="5" HorizontalAlignment="Stretch" />
+
+                            <DockPanel Grid.Row="2">
+
+                                <Label
+                                    DockPanel.Dock="Top" FontSize="14" FontWeight="Bold" Foreground="DarkGray">
+                                    Sea Water Flow Basic Parameters:
+                                </Label>
+
+                                <Grid Margin="10,0,0,0">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="25" />
+                                        <RowDefinition Height="25" />
+                                        <RowDefinition Height="25" />
+                                        <RowDefinition Height="25" />
+                                        <RowDefinition Height="25" />
+                                        <RowDefinition Height="*" />
+                                    </Grid.RowDefinitions>
+
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="105" />
+                                        <ColumnDefinition Width="50" />
+                                        <ColumnDefinition Width="50" />
+                                        <ColumnDefinition Width="120" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <CheckBox
+                                        x:Name="cbTemp" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" FontSize="14">
+                                        Temperature:
+                                    </CheckBox>
+                                    <TextBox
+                                        x:Name="txtTemp" Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" VerticalAlignment="Center"
+                                        FontSize="14">
+                                        20.00
+                                    </TextBox>
+                                    <TextBlock
+                                        Grid.Row="0" Grid.Column="2" Margin="5,0,0,0" VerticalAlignment="Center" FontSize="14">
+                                        [Dec C]
+                                    </TextBlock>
+
+                                    <CheckBox
+                                        x:Name="cbQ" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" FontSize="14">
+                                        Flow Rate:
+                                    </CheckBox>
+                                    <TextBox
+                                        x:Name="txtQ" Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" VerticalAlignment="Center"
+                                        FontSize="14">
+                                        30.00
+                                    </TextBox>
+                                    <TextBlock
+                                        Grid.Row="1" Grid.Column="2" Margin="5,0,0,0" VerticalAlignment="Center" FontSize="14">
+                                        [m3/h]
+                                    </TextBlock>
+
+                                    <CheckBox
+                                        x:Name="cbe" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" FontSize="14">
+                                        epsilon:
+                                    </CheckBox>
+                                    <TextBox
+                                        x:Name="txte" Grid.Row="2" Grid.Column="1" HorizontalAlignment="Stretch" VerticalAlignment="Center"
+                                        FontSize="14">
+                                        0.046
+                                    </TextBox>
+                                    <TextBlock
+                                        Grid.Row="2" Grid.Column="2" Margin="5,0,0,0" VerticalAlignment="Center" FontSize="14">
+                                        [mm]
+                                    </TextBlock>
+
+                                    <CheckBox
+                                        x:Name="cbL" Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" FontSize="14">
+                                        Length:
+                                    </CheckBox>
+                                    <TextBox
+                                        x:Name="txtL" Grid.Row="3" Grid.Column="1" HorizontalAlignment="Stretch" VerticalAlignment="Center"
+                                        FontSize="14">
+                                        10.00
+                                    </TextBox>
+                                    <TextBlock
+                                        Grid.Row="3" Grid.Column="2" Margin="5,0,0,0" VerticalAlignment="Center" FontSize="14">
+                                        [m]
+                                    </TextBlock>
+
+                                    <CheckBox
+                                        x:Name="cbD" Grid.Row="4" Grid.Column="0" VerticalAlignment="Center" FontSize="14">
+                                        Diameter:
+                                    </CheckBox>
+                                    <TextBox
+                                        x:Name="txtD" Grid.Row="4" Grid.Column="1" HorizontalAlignment="Stretch" VerticalAlignment="Center"
+                                        FontSize="14">
+                                        100.00
+                                    </TextBox>
+                                    <TextBlock
+                                        Grid.Row="4" Grid.Column="2" Margin="5,0,0,0" VerticalAlignment="Center" FontSize="14">
+                                        [mm]
+                                    </TextBlock>
+
+                                    <Button
+                                        Grid.Row="2" Grid.Column="3" Margin="5,2,5,2" Click="btnApplyAll_Click" Content="Apply to All" />
+                                    <Button
+                                        Grid.Row="3" Grid.Column="3" Margin="5,2,5,2" Click="btnApplySelection_Click" Content="Apply to Selection" />
+                                    <Button
+                                        Grid.Row="4" Grid.Column="3" Margin="5,2,5,2" Click="btnRefresh_Click" Content="Refresh" />
+                                </Grid>
+                            </DockPanel>
+
+                        </Grid>
+
+                        <StackPanel
+                            Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Orientation="Horizontal">
+                            <TextBlock Padding="2,0,2,0" FontSize="14">Length [m]:</TextBlock>
+                            <TextBlock
+                                x:Name="tbL" Padding="2,0,2,0" FontSize="14" FontWeight="Bold">
+                                0.00
+                            </TextBlock>
+                            <TextBlock Padding="2,0,2,0" FontSize="14">-</TextBlock>
+                            <TextBlock Padding="2,0,2,0" FontSize="14">Volume [lt]:</TextBlock>
+                            <TextBlock
+                                x:Name="tbV" Padding="2,0,2,0" FontSize="14" FontWeight="Bold">
+                                0.00
+                            </TextBlock>
+                            <TextBlock Padding="2,0,2,0" FontSize="14">-</TextBlock>
+                            <TextBlock Padding="2,0,2,0" FontSize="14">Friction Head Loss [mm]:</TextBlock>
+                            <TextBlock
+                                x:Name="tbHlmm" Padding="2,0,2,0" FontSize="14" FontWeight="Bold">
+                                0.00
+                            </TextBlock>
+                        </StackPanel>
+                    </Grid>
+                </TabItem>
+
+                <TabItem Header="Components">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="5" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="40" />
+                        </Grid.RowDefinitions>
+
+                        <DockPanel Grid.Row="0">
+                            <Label
+                                DockPanel.Dock="Top" FontSize="14" FontWeight="Bold" Foreground="DarkGray">
+                                Bill of Materials:
+                            </Label>
+                            <Border
+                                Margin="10,0,10,10" CornerRadius="0" DockPanel.Dock="Top">
+                                <Border.Effect>
+                                    <DropShadowEffect
+                                        BlurRadius="10" ShadowDepth="8" Color="Gray" />
+                                </Border.Effect>
+                                <xcdg:DataGridControl
+                                    x:Name="dgvBOM" AutoCreateColumns="False"
+                                    ItemsSource="{Binding}"
+                                    SelectionChanged="dgvBOM_SelectionChanged">
+
+                                    <!--  Resources  -->
+                                    <xcdg:DataGridControl.Resources>
+                                        <!--  DataGrid Header Style  -->
+                                        <Style TargetType="{x:Type xcdg:ColumnManagerRow}">
+                                            <Setter Property="Background" Value="#FFC4ECFF" />
+                                            <Setter Property="BorderBrush" Value="Black" />
+                                            <Setter Property="Foreground" Value="DarkBlue" />
+                                            <Setter Property="FontWeight" Value="Bold" />
+                                            <Setter Property="FontSize" Value="12" />
+                                        </Style>
+
+                                        <!--  DataGrid Header ToolTips  -->
+                                        <Style TargetType="{x:Type xcdg:ColumnManagerCell}">
+                                            <Style.Triggers>
+
+                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=FieldName}" Value="ElementType">
+                                                    <Setter Property="ToolTip" Value="Piping item type." />
+                                                </DataTrigger>
+
+                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=FieldName}" Value="L">
+                                                    <Setter Property="ToolTip" Value="Length of Pipe [m]." />
+                                                </DataTrigger>
+
+                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=FieldName}" Value="d">
+                                                    <Setter Property="ToolTip" Value="Diameter of stream or straight [mm]." />
+                                                </DataTrigger>
+
+                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=FieldName}" Value="d1">
+                                                    <Setter Property="ToolTip" Value="Small or branch diameter [mm]." />
+                                                </DataTrigger>
+
+                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=FieldName}" Value="r">
+                                                    <Setter Property="ToolTip" Value="Bend radious [mm]." />
+                                                </DataTrigger>
+
+                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=FieldName}" Value="a">
+                                                    <Setter Property="ToolTip" Value="Angle [deg]." />
+                                                </DataTrigger>
+
+                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=FieldName}" Value="W">
+                                                    <Setter Property="ToolTip" Value="Weight of item [kgr], calculated from PCF file." />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=FieldName}" Value="Vm">
+                                                    <Setter Property="ToolTip" Value="Volume of item [liters]." />
+                                                </DataTrigger>
+
+                                            </Style.Triggers>
+                                        </Style>
+
+                                    </xcdg:DataGridControl.Resources>
+
+                                    <!--  Context Menu  -->
+                                    <xcdg:DataGridControl.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Click="menuUpdateReport_Click" Header="Update" />
+                                            <MenuItem Click="menuRemoveItem_Click" Header="Remove" />
+                                            <MenuItem Click="menuRenumberItem_Click">
+                                                <MenuItem.Header>
+                                                    <ContentControl>
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock>Renumber:</TextBlock>
+                                                            <TextBox
+                                                                x:Name="tbNumber1" Width="40" Margin="10,0,0,0" PreviewTextInput="NumberValidationTextBox" Text="1"
+                                                                TextAlignment="Center" />
+                                                        </StackPanel>
+                                                    </ContentControl>
+                                                </MenuItem.Header>
+                                            </MenuItem>
+                                            <MenuItem
+                                                Click="menuCopyItem_Click" Header="Copy" IsEnabled="False" />
+                                            <MenuItem
+                                                Click="menuPasteItem_Click" Header="Paste" IsEnabled="False" />
+                                        </ContextMenu>
+                                    </xcdg:DataGridControl.ContextMenu>
+
+                                    <!--  Grid Columns  -->
+                                    <xcdg:DataGridControl.Columns>
+                                        <xcdg:Column
+                                            Title="Id" Width="40" CellVerticalContentAlignment="Center" FieldName="ElementId" Visible="True">
+                                            <xcdg:Column.CellContentTemplate>
+                                                <DataTemplate>
+                                                    <Grid>
+                                                        <Border Background="CadetBlue" CornerRadius="10" />
+                                                        <TextBlock HorizontalAlignment="Center" FontWeight="Bold">
+                                                            <ContentPresenter Content="{Binding}" />
+                                                        </TextBlock>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </xcdg:Column.CellContentTemplate>
+                                        </xcdg:Column>
+
+                                        <xcdg:Column
+                                            Title="Line" Width="*" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center" FieldName="Line"
+                                            Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="Type" Width="2*" CellVerticalContentAlignment="Center" FieldName="ElementType">
+                                            <xcdg:Column.CellEditor>
+                                                <xcdg:CellEditor>
+                                                    <xcdg:CellEditor.EditTemplate>
+                                                        <DataTemplate>
+                                                            <Grid>
+                                                                <ComboBox
+                                                                    Foreground="Black"
+                                                                    ItemsSource="{Binding Source={local:EnumBindingSource {x:Type local:ItemType}}}"
+                                                                    SelectedValue="{xcdg:CellEditorBinding}" />
+                                                            </Grid>
+                                                        </DataTemplate>
+                                                    </xcdg:CellEditor.EditTemplate>
+                                                </xcdg:CellEditor>
+                                            </xcdg:Column.CellEditor>
+                                        </xcdg:Column>
+
+                                        <xcdg:Column
+                                            Title="Length" Width="*" CellContentStringFormat="{}{0:N3}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            FieldName="L" Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="Diameter D" Width="*" CellContentStringFormat="{}{0:N1}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            FieldName="d" Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="Diameter D1" Width="*" CellContentStringFormat="{}{0:N1}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            FieldName="d1" Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="Radious" Width="*" CellContentStringFormat="{}{0:N1}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            FieldName="r" Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="Angle" Width="*" CellContentStringFormat="{}{0:N2}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            FieldName="a" Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="Weight" Width="*" CellContentStringFormat="{}{0:N1}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            FieldName="W" Visible="True">
+                                            <xcdg:Column.CellContentTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock
+                                                        HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="14" FontWeight="Bold">
+                                                        <ContentPresenter Content="{Binding}" />
+                                                    </TextBlock>
+                                                </DataTemplate>
+                                            </xcdg:Column.CellContentTemplate>
+                                        </xcdg:Column>
+
+                                        <xcdg:Column
+                                            Title="Volume" Width="*" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center" FieldName="Vm"
+                                            Visible="True">
+                                            <xcdg:Column.CellContentTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock
+                                                        HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="14" FontWeight="Bold">
+                                                        <ContentPresenter Content="{Binding}" ContentStringFormat="{}{0:N2}" />
+                                                    </TextBlock>
+                                                </DataTemplate>
+                                            </xcdg:Column.CellContentTemplate>
+                                        </xcdg:Column>
+
+                                        <xcdg:Column
+                                            Title="Notes" Width="*" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center" FieldName="Notes"
+                                            Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="N1.id" Width="*" CellContentStringFormat="{}{0:N2}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            DisplayMemberBinding="{Binding Path=Node1.NodeId}"
+                                            FieldName="Node1.NodeId" Visible="False" />
+
+                                        <xcdg:Column
+                                            Title="N1.X" Width="*" CellContentStringFormat="{}{0:N2}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            DisplayMemberBinding="{Binding Path=Node1.X, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            FieldName="Node1.X" Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="N1.Y" Width="*" CellContentStringFormat="{}{0:N2}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            DisplayMemberBinding="{Binding Path=Node1.Y, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            FieldName="Node1.Y" Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="N1.Z" Width="*" CellContentStringFormat="{}{0:N2}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            DisplayMemberBinding="{Binding Path=Node1.Z, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            FieldName="Node1.Z" Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="N2.id" Width="*" CellContentStringFormat="{}{0:N2}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            DisplayMemberBinding="{Binding Path=Node2.NodeId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            FieldName="Node2.NodeId" Visible="False" />
+
+                                        <xcdg:Column
+                                            Title="N2.X" Width="*" CellContentStringFormat="{}{0:N2}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            DisplayMemberBinding="{Binding Path=Node2.X, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            FieldName="Node2.X" Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="N2.Y" Width="*" CellContentStringFormat="{}{0:N2}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            DisplayMemberBinding="{Binding Path=Node2.Y, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            FieldName="Node2.Y" Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="N2.Z" Width="*" CellContentStringFormat="{}{0:N2}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            DisplayMemberBinding="{Binding Path=Node2.Z, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            FieldName="Node2.Z" Visible="True" />
+
+
+                                    </xcdg:DataGridControl.Columns>
+                                </xcdg:DataGridControl>
+                            </Border>
+                        </DockPanel>
+
+                        <GridSplitter
+                            Grid.Row="1" Grid.Column="0" Height="5" HorizontalAlignment="Stretch" />
+
+                        <DockPanel Grid.Row="2">
+                            <Label
+                                DockPanel.Dock="Top" FontSize="14" FontWeight="Bold" Foreground="DarkGray">
+                                Summary Table:
+                            </Label>
+                            <Border
+                                Margin="10,0,10,10" CornerRadius="0" DockPanel.Dock="Top">
+                                <Border.Effect>
+                                    <DropShadowEffect
+                                        BlurRadius="10" ShadowDepth="8" Color="Gray" />
+                                </Border.Effect>
+
+                                <xcdg:DataGridControl
+                                    x:Name="dgvSummary" AutoCreateColumns="False" SelectionChanged="dgvSummary_SelectionChanged">
+
+                                    <!--  Resources  -->
+                                    <xcdg:DataGridControl.Resources>
+                                        <!--  DataGrid Header Style  -->
+                                        <Style TargetType="{x:Type xcdg:ColumnManagerRow}">
+                                            <Setter Property="Background" Value="#FFC4ECFF" />
+                                            <Setter Property="BorderBrush" Value="Black" />
+                                            <Setter Property="Foreground" Value="DarkBlue" />
+                                            <Setter Property="FontWeight" Value="Bold" />
+                                            <Setter Property="FontSize" Value="12" />
+                                        </Style>
+                                    </xcdg:DataGridControl.Resources>
+
+                                    <!--  Context Menu  -->
+                                    <xcdg:DataGridControl.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Click="menuUpdateReport_Click" Header="Update" />
+                                            <MenuItem Click="menuGroupAll_Click" Header="Group All" />
+                                            <MenuItem Click="menuGroupLines_Click" Header="Group Lines" />
+                                        </ContextMenu>
+                                    </xcdg:DataGridControl.ContextMenu>
+
+                                    <!--  Grid Columns  -->
+                                    <xcdg:DataGridControl.Columns>
+
+                                        <xcdg:Column
+                                            Title="Line" Width="*" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center" FieldName="Line"
+                                            Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="Type" Width="*" CellVerticalContentAlignment="Center" FieldName="Element">
+                                            <xcdg:Column.CellEditor>
+                                                <xcdg:CellEditor>
+                                                    <xcdg:CellEditor.EditTemplate>
+                                                        <DataTemplate>
+                                                            <Grid>
+                                                                <ComboBox
+                                                                    Foreground="Black"
+                                                                    ItemsSource="{Binding Source={local:EnumBindingSource {x:Type local:ItemType}}}"
+                                                                    SelectedValue="{xcdg:CellEditorBinding}" />
+                                                            </Grid>
+                                                        </DataTemplate>
+                                                    </xcdg:CellEditor.EditTemplate>
+                                                </xcdg:CellEditor>
+                                            </xcdg:Column.CellEditor>
+                                        </xcdg:Column>
+
+                                        <xcdg:Column
+                                            Title="Diameter D" Width="*" CellContentStringFormat="{}{0:N1}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            FieldName="Diameter" Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="Diameter D1" Width="*" CellContentStringFormat="{}{0:N1}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            FieldName="D1" Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="Length" Width="*" CellContentStringFormat="{}{0:N3}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            FieldName="Length" Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="Radious" Width="*" CellContentStringFormat="{}{0:N2}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            FieldName="Radious" Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="Angle" Width="*" CellContentStringFormat="{}{0:N2}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            FieldName="Angle" Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="Weight" Width="*" CellContentStringFormat="{}{0:N1}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            FieldName="Weight" Visible="True">
+                                            <xcdg:Column.CellContentTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock
+                                                        HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="14" FontWeight="Bold">
+                                                        <ContentPresenter Content="{Binding}" />
+                                                    </TextBlock>
+                                                </DataTemplate>
+                                            </xcdg:Column.CellContentTemplate>
+                                        </xcdg:Column>
+
+                                        <xcdg:Column
+                                            Title="Volume" Width="*" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center" FieldName="Volume"
+                                            Visible="True">
+                                            <xcdg:Column.CellContentTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock
+                                                        HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="14" FontWeight="Bold">
+                                                        <ContentPresenter Content="{Binding}" ContentStringFormat="{}{0:N1}" />
+                                                    </TextBlock>
+                                                </DataTemplate>
+                                            </xcdg:Column.CellContentTemplate>
+                                        </xcdg:Column>
+
+                                        <xcdg:Column
+                                            Title="Count" Width="*" CellContentStringFormat="{}{0:N0}" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center"
+                                            FieldName="Count" Visible="True" />
+
+                                        <xcdg:Column
+                                            Title="Notes" Width="*" CellHorizontalContentAlignment="Center" CellVerticalContentAlignment="Center" FieldName="Notes"
+                                            Visible="True" />
+
+
+                                    </xcdg:DataGridControl.Columns>
+
+
+                                </xcdg:DataGridControl>
+
+                            </Border>
+                        </DockPanel>
+
+                        <StackPanel
+                            Grid.Row="3" HorizontalAlignment="Center" VerticalAlignment="Center" Orientation="Horizontal">
+                            <TextBlock Padding="2,0,2,0" FontSize="14">Length [m]:</TextBlock>
+                            <TextBlock
+                                x:Name="tbL2" Padding="2,0,2,0" FontSize="14" FontWeight="Bold">
+                                0.00
+                            </TextBlock>
+                            <TextBlock Padding="2,0,2,0" FontSize="14">-</TextBlock>
+                            <TextBlock Padding="2,0,2,0" FontSize="14">Weight [Kgr]:</TextBlock>
+                            <TextBlock
+                                x:Name="tbW2" Padding="2,0,2,0" FontSize="14" FontWeight="Bold">
+                                0.00
+                            </TextBlock>
+                            <TextBlock Padding="2,0,2,0" FontSize="14">-</TextBlock>
+                            <TextBlock Padding="2,0,2,0" FontSize="14">Volume [lt]:</TextBlock>
+                            <TextBlock
+                                x:Name="tbV2" Padding="2,0,2,0" FontSize="14" FontWeight="Bold">
+                                0.00
+                            </TextBlock>
+
+                        </StackPanel>
+
+                    </Grid>
+                </TabItem>
+
+                <TabItem Header="Info">
+                    <Grid>
+                        <DockPanel Grid.Row="0">
+                            <Label
+                                DockPanel.Dock="Top" FontSize="14" FontWeight="Bold" Foreground="DarkGray">
+                                PCF File Contents:
+                            </Label>
+                            <Border
+                                Margin="10,0,10,10" CornerRadius="0" DockPanel.Dock="Top">
+                                <Border.Effect>
+                                    <DropShadowEffect
+                                        BlurRadius="10" ShadowDepth="8" Color="Gray" />
+                                </Border.Effect>
+                                <TextBox
+                                    x:Name="txtPCF" HorizontalScrollBarVisibility="Auto" Text="" VerticalScrollBarVisibility="Auto" />
+                            </Border>
+                        </DockPanel>
+                    </Grid>
+                </TabItem>
+
+            </TabControl>
+        </Grid>
+
+    </DockPanel>
+
+</Window>

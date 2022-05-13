@@ -1,0 +1,71 @@
+Option Explicit
+
+Call Main()
+Sub Main()
+	
+	' Declare variables
+	Dim xlApp, xlBook, xlSheet  ' Declare variable to hold the reference.
+	Dim arrObjects, strObject
+	Dim intCount
+	Dim arrMid
+	Dim intID 
+	
+	'Set Default Values 
+	intCount = 1
+	intID = 1
+	' Select objects      
+	arrObjects = Rhino.GetObjects("Pick some curves", 4)
+	If Not IsArray(arrObjects) Then Exit Sub
+ 
+	' Open Excel object
+	Set xlApp = CreateObject("excel.application")
+
+	' You may have to set Visible property to True if you want to see the application.
+	xlApp.Visible = True
+
+	' Use xlApp to access Microsoft Excel's other objects.
+	Set xlBook = xlApp.Workbooks.Add
+	Set xlSheet = xlBook.Worksheets(1)
+ 
+	'Place titles on sheet
+	xlApp.Cells(1, 2).Value = "ID"
+	xlApp.Cells(1, 3).Value = "NETWORK"
+	xlApp.Cells(1, 4).Value = "MATERIAL"
+	xlApp.Cells(1, 5).Value = "TYPE"
+	xlApp.Cells(1, 6).Value = "LENGTH"
+	xlApp.Cells(1, 7).Value = "DIAMETER"
+ 
+	'Extract Properties of Curves
+	For Each strObject In arrObjects
+	
+		'Curves Processed
+		If Rhino.IsCurve(strObject) Then
+
+			xlApp.Cells(intCount + 2, 2).Value = intID
+			xlApp.Cells(intCount + 2, 3).Value = Replace(Rhino.ObjectLayer(strObject), "Pipes::BWTS_", "")
+			xlApp.Cells(intCount + 2, 4).Value = Rhino.GetUserText(strObject, "Mat")
+			xlApp.Cells(intCount + 2, 5).Value = Rhino.GetUserText(strObject, "Type")
+			xlApp.Cells(intCount + 2, 6).Value = FormatNumber(Rhino.CurveLength(strObject), 0)
+			xlApp.Cells(intCount + 2, 7).Value = Rhino.GetUserText(strObject, "Dia")
+	
+			'Extract UserData
+			arrMid = Rhino.CurveMidPoint(strObject)
+			Dim str
+			str = intID '&_
+				'	vbCrLf & Replace(Rhino.ObjectLayer(strObject), "Pipes::BWTS_", "") & _
+				'	vbCrLf & Rhino.GetUserText(strObject, "Mat") & _
+				'	vbCrLf & Rhino.GetUserText(strObject, "Type") & _
+				'	vbCrLf & FormatNumber(Rhino.CurveLength(strObject), 2) & _
+				'	vbCrLf & Rhino.GetUserText(strObject, "Dia")
+			Rhino.CurrentLayer(Rhino.ObjectLayer(strObject))
+			Rhino.AddTextDot str, arrMid
+
+		End If
+		intCount = intCount + 1
+		intID = intID + 1
+	Next
+ 
+	'xlApp.Quit   ' When you finish, use the Quit method to close 
+	Set xlApp = Nothing   ' the application, then release the reference.
+
+End Sub
